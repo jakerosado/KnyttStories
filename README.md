@@ -1,4 +1,10 @@
-## YKnytt
+## Knytt Stories
+
+### Fork Precursor
+
+This is a fork of YKnytt, developed by youkaicountry and up-left. They are brilliant individuals who have done great work to make this project come to fruition.
+
+YKnytt's current iteration has differing views among the community and developers as to how it should proceed going forward. As such, I am taking a proactive step in providing a fork with a focus on community-driven development.
 
 ![image](screenshots/cover.png)
 
