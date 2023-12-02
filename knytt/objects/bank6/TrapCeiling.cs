@@ -17,6 +17,16 @@ public class TrapCeiling : GDKnyttBaseObject
     private void _on_Checker_body_entered(object body, bool up)
     {
         moving_up = up;
-        GetNode<AudioStreamPlayer2D>("HitSound2D").Play();
+
+        if (moving_up)
+        {
+            GetNode<AudioStreamPlayer2D>("MovingDown2D").Stop();
+            GetNode<AudioStreamPlayer2D>("MovingUp2D").Play();
+        }
+        else
+        {
+            GetNode<AudioStreamPlayer2D>("MovingUp2D").Stop();
+            GetNode<AudioStreamPlayer2D>("MovingDown2D").Play();
+        }
     }
 }
