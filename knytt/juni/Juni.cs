@@ -8,7 +8,7 @@ using static YKnyttLib.JuniValues;
 
 public class Juni : KinematicBody2D
 {
-    /*[Export] public*/internal const float JUMP_SPEED_HIGH = -240f,    // Speed of jump with high jump power (-238.5 in original)
+    /*[Export] public*/internal const float JUMP_SPEED_HIGH = -243f,    // Speed of jump with high jump power (-238.5 in original)
     JUMP_SPEED_LOW = -235.5f,                   // Speed of jump with no high jump power (-230 in original)
     JUMP_SPEED_UMBRELLA = -221f,                // Speed of jump with umbrella (-220 in original)
     GRAVITY = 1125f,                            // Gravity exerted on Juni
@@ -20,7 +20,7 @@ public class Juni : KinematicBody2D
     MAX_SPEED_WALK = 90f,                       // Max speed while walking
     MAX_SPEED_RUN = 175f,                       // Max speed while running
     MAX_X_SPEED_UMBRELLA = 130f,                // Maximum X speed when Juni has the umbrella deployed
-    PULL_OVER_FORCE_X = 30f,                    // X Force guranteed when reaching the top of a climb
+    PULL_OVER_FORCE_X = 75f,                    // X Force guranteed when reaching the top of a climb
     PULL_OVER_SPEED_Y = -125f,                  // Y Speed set when reaching the top of a climb
     SLOPE_MAX_ANGLE = 1.11f,                    // The Maximum angle a floor can be before becoming a wall (in original 2-pixel obstacle is a bump, 3-4-pixel obstacle is a stopper, 5-pixel obstacle is a wall)
     UPDRAFT_FORCE = .116f,                      // The base updraft force exerted (.111 in original)
@@ -76,7 +76,7 @@ public class Juni : KinematicBody2D
     public Sprite Detector { get; private set; }
     public KnyttPoint AreaPosition => GDArea.getPosition(GlobalPosition); 
 
-    public JuniValues Powers { get; }
+    public JuniValues Powers { get; set; }
 
     public Checkers Checkers { get; private set; }
 
@@ -145,7 +145,7 @@ public class Juni : KinematicBody2D
     }
 
     public int JumpLimit => Powers.getPower(PowerNames.DoubleJump) ? 2 : 1; 
-    public bool CanClimb => Powers.getPower(PowerNames.Climb) && Checkers.Colliding; 
+    public bool CanClimb => Powers.getPower(PowerNames.Climb) && Checkers.Colliding && !Checkers.IsInside; 
     public bool CanUmbrella => Powers.getPower(PowerNames.Umbrella); 
     public bool Grounded { get; set; }
     public bool DidJump => juniInput.JumpEdge && Grounded && CanJump; 
@@ -469,7 +469,7 @@ public class Juni : KinematicBody2D
         // Limit falling speed to terminal velocity
         velocity.y = Mathf.Min(TerminalVelocity, velocity.y);
 
-        if (Checkers.IsInside) { Translate(new Godot.Vector2(INSIDE_X_SPEED * MoveDirection * delta, INSIDE_Y_SPEED * delta)); }
+        if (Checkers.IsInside) { Translate(new Godot.Vector2(INSIDE_X_SPEED * MoveDirection * delta, INSIDE_Y_SPEED * delta * (juniInput.UpHeld ? -5 : 1))); }
         else
         {
             // Do the movement in two steps to avoid hanging up on tile seams
@@ -480,10 +480,15 @@ public class Juni : KinematicBody2D
                                       stopOnSlope: true, floorMaxAngle: SLOPE_MAX_ANGLE).y;
             Grounded = IsOnFloor() || MoveAndCollide(Godot.Vector2.Down, testOnly: true) != null;
         }
+        /* // poor parallax // set scale of background nodes to (1.04, 1)
+        Game.CurrentArea.Tiles.Layers[0].Position = Game.CurrentArea.Tiles.Layers[1].Position = Game.CurrentArea.Tiles.Layers[2].Position = 
+        Game.CurrentArea.GetNode<GDKnyttBackground>("Background").Position =
+            new Godot.Vector2(-(GlobalPosition.x - Game.CurrentArea.GlobalPosition.x) / 25, 0);*/
     }
 
     private void processFlyMode(float delta)
     {
+        if (!juniInput.Enabled) { return; }
         var dir = new Godot.Vector2();
         if (Input.IsActionPressed("up")) { dir.y -= 1f; }
         if (Input.IsActionPressed("down")) { dir.y += 1f; }
@@ -661,10 +666,12 @@ public class Juni : KinematicBody2D
         var frames = Sprite.Texture.GetSize() / 24;
         Sprite.Hframes = (int)frames.x;
         Sprite.Vframes = (int)frames.y;
+        Sprite.RegionRect = new Rect2(0, 0, 24 * Sprite.Hframes, 24 * Sprite.Vframes);
 
         var uframes = Umbrella.Texture.GetSize() / 24;
         Umbrella.Hframes = (int)uframes.x;
         Umbrella.Vframes = (int)uframes.y;
+        Umbrella.RegionRect = new Rect2(0, 0, 24 * Umbrella.Hframes, 24 * Umbrella.Vframes);
     }
 
     private void _on_Hitbox_body_entered(BaseBullet bullet)

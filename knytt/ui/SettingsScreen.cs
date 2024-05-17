@@ -23,6 +23,9 @@ public class SettingsScreen : BasicScreen
         GetNode<CheckBox>("SettingsContainer/SmoothScale").Pressed = GDKnyttSettings.SmoothScaling;
         GetNode<OptionButton>("SettingsContainer/ScrollContainer/ScrollDropdown").Select((int)GDKnyttSettings.ScrollType);
         GetNode<CheckBox>("SettingsContainer/Border").Pressed = GDKnyttSettings.Border;
+        GetNode<OptionButton>("SettingsContainer/ShaderContainer/Shader").Select((int)GDKnyttSettings.Shader);
+        GetNode<CheckBox>("SettingsContainer/MapContainer/ForcedMap").Pressed = GDKnyttSettings.ForcedMap;
+        GetNode<CheckBox>("SettingsContainer/MapContainer/DetailedMap").Pressed = GDKnyttSettings.DetailedMap;
         GetNode<OptionButton>("ButtonContainer/OfflineDropdown").Select((int)GDKnyttSettings.Connection);
         GetNode<Slider>("VolumeContainer/MasterVolumeSlider").Value = GDKnyttSettings.MasterVolume;
         GetNode<Slider>("VolumeContainer/MusicVolumeSlider").Value = GDKnyttSettings.MusicVolume;
@@ -64,6 +67,21 @@ public class SettingsScreen : BasicScreen
     private void _on_Border_pressed()
     {
         GDKnyttSettings.Border = GetNode<CheckBox>("SettingsContainer/Border").Pressed;
+    }
+
+    private void _on_ForcedMap_pressed()
+    {
+        GDKnyttSettings.ForcedMap = GetNode<CheckBox>("SettingsContainer/MapContainer/ForcedMap").Pressed;
+    }
+
+    private void _on_DetailedMap_pressed()
+    {
+        GDKnyttSettings.DetailedMap = GetNode<CheckBox>("SettingsContainer/MapContainer/DetailedMap").Pressed;
+    }
+    
+    private void _on_Shader_item_selected(int index)
+    {
+        GDKnyttSettings.Shader = (GDKnyttSettings.ShaderType)index;
     }
 
     public void _on_KeyRemapButton_pressed()

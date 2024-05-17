@@ -1,23 +1,20 @@
-﻿using IniParser.Model;
+using IniParser.Model;
 using IniParser.Parser;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
 using System.Linq;
 
 namespace YKnyttLib
 {
     public class KnyttSave
     {
-        private const int HASH_BYTES = 4;
-        private const int SLIM_HASH_BYTES = 2;
-
         public KnyttWorld World { get; }
 
         private IniData data;
         public int Slot { get; }
+
+        public JuniValues SourcePowers { get; set; }
 
         public string SaveFileName => string.Format("{0} {1}.ini", World.WorldDirectoryName, Slot); 
 
@@ -123,6 +120,32 @@ namespace YKnyttLib
             }
         }
 
+        public Dictionary<KnyttPoint, string> Marked
+        {
+            set
+            {
+                if (value == null) { return; }
+                setValue("Extras", "Marked", String.Join(",", value.Select(kv => $"{kv.Value}x{kv.Key.x}y{kv.Key.y}")));
+            }
+
+            get
+            {
+                var marked_save = getValue("Extras", "Marked");
+                if (marked_save == null || marked_save == "") { return null; }
+                var marks = marked_save.Split(',');
+                var result = new Dictionary<KnyttPoint, string>(marks.Length);
+                foreach (string mark in marks)
+                {
+                    int xp = mark.IndexOf('x');
+                    int yp = mark.IndexOf('y');
+                    int x = int.Parse(mark.Substring(xp + 1, yp - xp - 1));
+                    int y = int.Parse(mark.Substring(yp + 1));
+                    result[new KnyttPoint(x, y)] = mark.Substring(0, xp);
+                }
+                return result;
+            }
+        }
+
         public string Attachment
         {
             get { return getValue("Extras", "Attach"); }
@@ -132,7 +155,7 @@ namespace YKnyttLib
         public string Character
         {
             get { return getValue("Extras", "Character"); }
-            set { setValue("Extras", "Character", value?.ToLower() ?? "juni", "juni"); }
+            set { setValue("Extras", "Character", value?.ToLower() ?? "juni"); }
         }
 
         public (string, string, string) Tint
@@ -156,6 +179,24 @@ namespace YKnyttLib
         {
             get { return getValue("Extras", "Endings")?.Split(',').Where(s => s != "").ToHashSet() ?? new HashSet<string>(); }
             set { setValue("Extras", "Endings", String.Join(",", value), ""); }
+        }
+
+        public int TotalDeaths
+        {
+            get { return int.TryParse(getValue("Extras", "Total Deaths"), out int i) ? i : 0; }
+            set { setValue("Extras", "Total Deaths", value.ToString()); }
+        }
+
+        public int HardestPlaceDeaths
+        {
+            get { return int.TryParse(getValue("Extras", "Hardest Place Deaths"), out int i) ? i : 0; }
+            set { setValue("Extras", "Hardest Place Deaths", value.ToString()); }
+        }
+
+        public string HardestPlace
+        {
+            get { return getValue("Extras", "Hardest Place"); }
+            set { setValue("Extras", "Hardest Place", value); }
         }
 
         public KnyttPoint getArea()

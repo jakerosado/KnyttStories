@@ -224,19 +224,24 @@ public class LevelSelection : BasicScreen
         binLoad("res://knytt/worlds/Nifflas - Sky Flowerz.knytt.bin");
         binLoad("res://knytt/worlds/Nifflas - An Underwater Adventure.knytt.bin");
         binLoad("res://knytt/worlds/Nifflas - This Level is Unfinished.knytt.bin");
-        binLoad("res://knytt/worlds/Nifflas - Tutorial.knytt.bin");
+        binLoad(OS.GetName() == "HTML5" ? MainMenu.WEB_TUTORIAL_PATH :
+                TouchSettings.EnablePanel ? MainMenu.TOUCH_TUTORIAL_PATH : MainMenu.TUTORIAL_PATH);
         if (OS.GetName() == "HTML5")
         {
-            binLoad("res://knytt/worlds/html5/Ania - The Cursed House.knytt.bin");
-            //binLoad("res://knytt/worlds/html5/Ble - Timecraft 1.1.knytt.bin");
-            binLoad("res://knytt/worlds/html5/Chironex - Afar.knytt.bin");
             binLoad("res://knytt/worlds/html5/dessgeega-TheLighthouse.knytt.bin");
             binLoad("res://knytt/worlds/html5/dessgeega-Fossil.knytt.bin");
-            binLoad("res://knytt/worlds/html5/dessgeega-Torchlight.knytt.bin");
             binLoad("res://knytt/worlds/html5/dessgeega-UndertheCrack.knytt.bin");
-            binLoad("res://knytt/worlds/html5/egomassive-AKnyttinTime1.5.knytt.bin");
+            binLoad("res://knytt/worlds/html5/dessgeega-Torchlight.knytt.bin");
+            binLoad("res://knytt/worlds/html5/ozz - Realms of the Pharaoh v1.1.knytt.bin");
             binLoad("res://knytt/worlds/html5/Introversity - Scrolly Polly Snow.knytt.bin");
             binLoad("res://knytt/worlds/html5/Diesel-Station07.knytt.bin");
+            binLoad("res://knytt/worlds/html5/egomassive-AKnyttinTime1.5.knytt.bin");
+            binLoad("res://knytt/worlds/html5/Fegon-Yggdrasil.knytt.bin");
+            binLoad("res://knytt/worlds/html5/Grimwit - Cliff Hangerv13.knytt.bin");
+            binLoad("res://knytt/worlds/html5/Jigganis - splitMindv1.1.knytt.bin");
+            binLoad("res://knytt/worlds/html5/Ania - The Cursed House.knytt.bin");
+            binLoad("res://knytt/worlds/html5/Chironex - Afar.knytt.bin");
+            binLoad("res://knytt/worlds/html5/FredrikAndersson-Core.knytt.bin");
         }
     }
 
@@ -286,8 +291,6 @@ public class LevelSelection : BasicScreen
         KnyttWorldInfo world_info;
         string cache_dir = "user://Cache".PlusFile(world_dir.GetFile());
         string ini_cache_name = cache_dir + "/World.ini";
-        string played_flag_name = cache_dir + "/LastPlayed.flag";
-        string completed_flag_name = cache_dir + "/Completed.flag";
         if (new File().FileExists(ini_cache_name))
         {
             world_info = getWorldInfo(GDKnyttAssetManager.loadFile(ini_cache_name));
@@ -297,7 +300,7 @@ public class LevelSelection : BasicScreen
             var ini_bin = GDKnyttAssetManager.loadFile(world_dir + "/world.ini");
             var ini_data = new IniData();
             world_info = getWorldInfo(ini_bin, merge_to: ini_data["World"]);
-            ini_data["World"]["World Folder"] = world_dir.GetFile();
+            world_info.Folder = ini_data["World"]["World Folder"] = world_dir.GetFile();
             GDKnyttAssetManager.ensureDirExists(cache_dir);
             var f = new File();
             f.Open(ini_cache_name, File.ModeFlags.Write);
@@ -306,22 +309,17 @@ public class LevelSelection : BasicScreen
         }
 
         Texture icon = GDKnyttAssetManager.loadExternalTexture(world_dir + "/icon.png");
-        var last_played = new File().FileExists(played_flag_name) ? new File().GetModifiedTime(played_flag_name) : 0;
-        bool completed = new File().FileExists(completed_flag_name);
-
-        return new WorldEntry(icon, world_info, world_dir, last_played, completed);
+        return getWorldEntry(world_dir, icon, world_info);
     }
 
-    private WorldEntry generateBinWorld(string world_dir)
+    private WorldEntry generateBinWorld(string world_file)
     {
         byte[] icon_bin;
         KnyttWorldInfo world_info;
 
-        string cache_dir = "user://Cache".PlusFile(world_dir.GetFile());
+        string cache_dir = "user://Cache".PlusFile(world_file.GetFile());
         string icon_cache_name = cache_dir + "/Icon.png";
         string ini_cache_name = cache_dir + "/World.ini";
-        string played_flag_name = cache_dir + "/LastPlayed.flag";
-        string completed_flag_name = cache_dir + "/Completed.flag";
         if (new Directory().FileExists(ini_cache_name))
         {
             icon_bin = GDKnyttAssetManager.loadFile(icon_cache_name);
@@ -331,9 +329,11 @@ public class LevelSelection : BasicScreen
         {
             KnyttBinWorldLoader binloader;
             byte[] ini_bin;
+            byte[] world_bin;
             try
             {
-                binloader = new KnyttBinWorldLoader(GDKnyttAssetManager.loadFile(world_dir));
+                world_bin = GDKnyttAssetManager.loadFile(world_file);
+                binloader = new KnyttBinWorldLoader(world_bin);
             }
             catch (InvalidOperationException)
             {
@@ -351,26 +351,40 @@ public class LevelSelection : BasicScreen
 
             var ini_data = new IniData();
             world_info = getWorldInfo(ini_bin, merge_to: ini_data["World"]);
-            ini_data["World"]["World Folder"] = binloader.RootDirectory;
+            world_info.Folder = ini_data["World"]["World Folder"] = binloader.RootDirectory;
+            world_info.FileSize = world_bin.Length;
+            ini_data["World"]["File Size"] = world_bin.Length.ToString();
             f.Open(ini_cache_name, File.ModeFlags.Write);
             f.StoreBuffer(Encoding.GetEncoding(1252).GetBytes(ini_data.ToString()));
             f.Close();
         }
 
         Texture icon = GDKnyttAssetManager.loadTexture(icon_bin);
-        var last_played = new File().FileExists(played_flag_name) ? new File().GetModifiedTime(played_flag_name) : 0;
-        bool completed = new File().FileExists(completed_flag_name);
-
-        return new WorldEntry(icon, world_info, world_dir, last_played, completed);
+        return getWorldEntry(world_file, icon, world_info);
     }
 
-    private KnyttWorldInfo getWorldInfo(byte[] ini_bin, KeyDataCollection merge_to = null)
+    public static KnyttWorldInfo getWorldInfo(byte[] ini_bin, KeyDataCollection merge_to = null)
     {
         string ini = GDKnyttAssetManager.loadTextFile(ini_bin);
         GDKnyttWorldImpl world = new GDKnyttWorldImpl();
         world.loadWorldConfig(ini);
         if (merge_to != null) { merge_to.Merge(world.INIData["World"]); }
         return world.Info;
+    }
+
+    private WorldEntry getWorldEntry(string world_dir, Texture icon, KnyttWorldInfo world_info)
+    {
+        string cache_dir = "user://Cache".PlusFile(world_dir.GetFile());
+
+        string played_flag_name = cache_dir + "/LastPlayed.flag";
+        var last_played = new File().FileExists(played_flag_name) ? new File().GetModifiedTime(played_flag_name) : 0;
+
+        bool has_saves = Enumerable.Range(1, 3).Any(i => new File().FileExists($"{GDKnyttSettings.Saves}/{world_info.Folder} {i}.ini"));
+
+        var result = new WorldEntry(world_info, world_dir) { Icon = icon, LastPlayedTime = last_played, HasSaves = has_saves };
+        
+        if (result.Completed == 0 && new File().FileExists($"{cache_dir}/Completed.flag")) { result.Completed = 1; } // backwards compatability
+        return result;
     }
 
     private WorldEntry generateRemoteWorld(Dictionary json_item)
@@ -395,6 +409,8 @@ public class LevelSelection : BasicScreen
             Downvotes = HTTPUtil.jsonInt(json_item, "downvotes"),
             Downloads = HTTPUtil.jsonInt(json_item, "downloads"),
             Complains = HTTPUtil.jsonInt(json_item, "complains"),
+            OverallScore = HTTPUtil.jsonFloat(json_item, "score"),
+            Voters = HTTPUtil.jsonInt(json_item, "voters"),
             AutoVerified = HTTPUtil.jsonBool(json_item, "autoverified"),
             Status = HTTPUtil.jsonInt(json_item, "status"),
             Categories = HTTPUtil.jsonValue<Godot.Collections.Array>(json_item, "category")
@@ -543,7 +559,7 @@ public class LevelSelection : BasicScreen
             {
                 if (button.worldEntry == entry)
                 {
-                    if (entry.Completed) { button.markCompletedByPlayer(); } else { button.markClear(); }
+                    button.refreshCompletion();
                     if (disable) { button.Disabled = true; button.markDisabled(); }
                     return;
                 }

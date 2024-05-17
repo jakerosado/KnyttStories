@@ -83,8 +83,9 @@ public class GDObjectLayers : Node2D
 
     private void turnOffObjects(GDKnyttObjectLayer layer)
     {
-        foreach (Node obj in layer.GetChildren())
+        foreach (GDKnyttBaseObject obj in layer.GetChildren())
         {
+            obj.SafeBullets = true;
             foreach (Node child in obj.GetChildren())
             {
                 switch (child)
@@ -98,14 +99,14 @@ public class GDObjectLayers : Node2D
         }
     }
 
-    public List<GDKnyttBaseObject> findObjects(KnyttPoint obj_id)
+    public List<GDKnyttBaseObject> findObjects(List<KnyttPoint> obj_ids)
     {
         List<GDKnyttBaseObject> finds = new List<GDKnyttBaseObject>();
         foreach (var layer in GDArea.Objects.Layers)
         {
             foreach (GDKnyttBaseObject knytt_object in layer.GetChildren())
             {
-                if (obj_id.x == knytt_object.ObjectID.x && obj_id.y == knytt_object.ObjectID.y)
+                if (obj_ids.Contains(knytt_object.ObjectID))
                 {
                     finds.Add(knytt_object);
                 }
@@ -114,9 +115,47 @@ public class GDObjectLayers : Node2D
         return finds;
     }
 
+    public List<GDKnyttBaseObject> findObjects(KnyttPoint obj_id)
+    {
+        return findObjects(new List<KnyttPoint>() {obj_id});
+    }
+
     public GDKnyttBaseObject findObject(KnyttPoint obj_id)
     {
         var finds = findObjects(obj_id);
         return finds.Count != 0 ? finds[0] : null;
+    }
+
+    public void checkCollectables()
+    {
+        var powers = GDArea.GDWorld.Game.Juni.Powers;
+        powers.resetMarks(GDArea.Area.Position);
+
+        foreach (var layer in GDArea.Objects.Layers)
+        {
+            foreach (GDKnyttBaseObject kbo in layer.GetChildren())
+            {
+                var knytt_object = kbo;
+                if (knytt_object is CustomObject obj && obj.GetChildCount() > 0 && obj.GetChild(0) is GDKnyttBaseObject child_object)
+                {
+                    knytt_object = child_object;
+                }
+                if (knytt_object is PowerItem pitem && !powers.getPower(pitem.Power))
+                {
+                    bool is_key = pitem.Power >= 8 && pitem.Power <= 11;
+                    powers.setMark(GDArea.Area.Position, is_key ? JuniValues.Collectable.Key : JuniValues.Collectable.Powerup);
+                }
+                if (knytt_object is Door door && !door.checkKey(GDArea.GDWorld.Game.Juni))
+                {
+                    powers.setMark(GDArea.Area.Position, JuniValues.Collectable.Door);
+                }
+                if (knytt_object.ObjectID.x == 19 && !powers.getCollectable(knytt_object.ObjectID.y))
+                {
+                    powers.setMark(GDArea.Area.Position, 
+                        knytt_object.ObjectID.y <= 50 ? JuniValues.Collectable.Creature :
+                        knytt_object.ObjectID.y <= 150 ? JuniValues.Collectable.Coin : JuniValues.Collectable.Artifact);
+                }
+            }
+        }
     }
 }

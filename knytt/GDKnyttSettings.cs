@@ -10,11 +10,9 @@ public class GDKnyttSettings : Node
     public static IniData ini { get; private set; }
     static SceneTree tree;
 
-    public enum ScrollTypes
-    {
-        Smooth = 0,
-        Original = 1
-    }
+    public enum ScrollTypes { Smooth, Original }
+
+    public enum ShaderType { NoShader, HQ4X, CRT, Sepia, VHS, }
 
     static GDKnyttSettings()
     {
@@ -69,7 +67,7 @@ public class GDKnyttSettings : Node
     
     public static ScrollTypes ScrollType
     {
-        get { return String2ScrollTypes(ini["Graphics"]["Scroll Type"]); }
+        get { return Enum.TryParse<ScrollTypes>(ini["Graphics"]["Scroll Type"], out var s) ? s : ScrollTypes.Original; }
         set
         {
             var game = tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame");
@@ -77,7 +75,7 @@ public class GDKnyttSettings : Node
             {
                 game.GDWorld.Areas.BorderSize = (value == ScrollTypes.Original ? new KnyttPoint(0, 0) : new KnyttPoint(1, 1));
             }
-            ini["Graphics"]["Scroll Type"] = ScrollTypes2String(value);
+            ini["Graphics"]["Scroll Type"] = value.ToString();
         }
     }
 
@@ -89,6 +87,57 @@ public class GDKnyttSettings : Node
             ini["Graphics"]["Border"] = value ? "1" : "0";
             tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame")?.setupBorder();
         }
+    }
+
+    public static bool ForcedMap
+    {
+        get { return ini["Graphics"]["Forced Map"].Equals("1") ? true : false; }
+        set
+        {
+            var game = tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame");
+            bool had_map = game != null && game.hasMap();
+            ini["Graphics"]["Forced Map"] = value ? "1" : "0";
+            if (game == null) { return; }
+            if (!had_map && game.hasMap()) { game.UI.forceMap(true); }
+            if (had_map && !game.hasMap()) { game.UI.forceMap(false); }
+        }
+    }
+
+    public static bool DetailedMap
+    {
+        get { return ini["Graphics"]["Detailed Map"].Equals("1") ? true : false; }
+        set
+        {
+            ini["Graphics"]["Detailed Map"] = value ? "1" : "0";
+            var game = tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame");
+            var viewports = game?.GetNode<MapViewports>("%MapViewports");
+            var map_panel = game?.GetNode<MapPanel>("UICanvasLayer/MapBackgroundPanel/MapPanel");
+            MapPanel.initScale();
+            if (game == null) { return; }
+            if (value)
+            {
+                viewports.init(game.GDWorld.KWorld);
+                if (game.hasMap()) { viewports.addArea(game.CurrentArea); }
+            }
+            else { viewports.destroy(); }
+            map_panel.initSize();
+        }
+    }
+    
+    public static ShaderType Shader
+    {
+        get { return Enum.TryParse<ShaderType>(ini["Graphics"]["Shader Type"], out var s) ? s : ShaderType.NoShader; }
+        set
+        {
+            ini["Graphics"]["Shader Type"] = value.ToString();
+            tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame")?.setupShader();
+        }
+    }
+
+    public static bool WSOD
+    {
+        get { return ini["Graphics"]["WSOD"].Equals("1") ? true : false; }
+        set { ini["Graphics"]["WSOD"] = value ? "1" : "0"; }
     }
 
     // Calculate the volume in dB from the config value
@@ -147,26 +196,6 @@ public class GDKnyttSettings : Node
         {
             ini["Audio"]["Environment Volume"] = $"{value}";
             AudioServer.SetBusVolumeDb(AudioServer.GetBusIndex("Environment"), calcVolume(value));
-        }
-    }
-
-    private static ScrollTypes String2ScrollTypes(string s)
-    {
-        switch (s)
-        {
-            case "Smooth": return ScrollTypes.Smooth;
-            case "Original": return ScrollTypes.Original;
-            default: return ScrollTypes.Smooth;
-        }
-    }
-
-    private static string ScrollTypes2String(ScrollTypes t)
-    {
-        switch (t)
-        {
-            case ScrollTypes.Smooth: return "Smooth";
-            case ScrollTypes.Original: return "Original";
-            default: return "Smooth";
         }
     }
 
@@ -263,8 +292,12 @@ public class GDKnyttSettings : Node
 
         modified |= ensureSetting("Graphics", "Fullscreen", "0");
         modified |= ensureSetting("Graphics", "Smooth Scaling", "1");
-        modified |= ensureSetting("Graphics", "Scroll Type", "Original");
+        modified |= ensureSetting("Graphics", "Scroll Type", ScrollTypes.Original.ToString());
         modified |= ensureSetting("Graphics", "Border", Mobile && TouchSettings.isHandsOverlapping() ? "1" : "0");
+        modified |= ensureSetting("Graphics", "Forced Map", "1");
+        modified |= ensureSetting("Graphics", "Detailed Map", "1");
+        modified |= ensureSetting("Graphics", "Shader Type", ShaderType.NoShader.ToString());
+        modified |= ensureSetting("Graphics", "WSOD", "1");
 
         modified |= ensureSetting("Audio", "Master Volume", "100");
         modified |= ensureSetting("Audio", "Music Volume", "80");
@@ -291,8 +324,12 @@ public class GDKnyttSettings : Node
     {
         Fullscreen = ini["Graphics"]["Fullscreen"].Equals("1") ? true : false;
         SmoothScaling = ini["Graphics"]["Smooth Scaling"].Equals("1") ? true : false;
-        ScrollType = String2ScrollTypes(ini["Graphics"]["Scroll Type"]);
+        ScrollType = Enum.TryParse<ScrollTypes>(ini["Graphics"]["Scroll Type"], out var s) ? s : ScrollTypes.Original;
         Border = ini["Graphics"]["Border"].Equals("1") ? true : false;
+        ForcedMap = ini["Graphics"]["Forced Map"].Equals("1") ? true : false;
+        DetailedMap = ini["Graphics"]["Detailed Map"].Equals("1") ? true : false;
+        Shader = Enum.TryParse<ShaderType>(ini["Graphics"]["Shader Type"], out var f) ? f : ShaderType.NoShader;
+        WSOD = ini["Graphics"]["WSOD"].Equals("1") ? true : false;
         MasterVolume = int.Parse(ini["Audio"]["Master Volume"]);
         MusicVolume = int.Parse(ini["Audio"]["Music Volume"]);
         EnvironmentVolume = int.Parse(ini["Audio"]["Environment Volume"]);

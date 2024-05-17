@@ -17,6 +17,11 @@ namespace YKnyttLib
         public int Skin { get; }
         public string Character { get; }
 
+        public string Folder { get; set; }
+        public int FileSize { get; set; }
+        public int Score { get; set; }
+        public int Completed { get; set; }
+
         public KnyttWorldInfo(KeyDataCollection world_data)
         {
             this.Difficulties = new List<string>();
@@ -34,9 +39,12 @@ namespace YKnyttLib
 
             parseMultiCategory(world_data, "Category", Categories, new string[] { "A", "B" });
             parseMultiCategory(world_data, "Difficulty", Difficulties, new string[] { "A", "B", "C" });
-        }
 
-        
+            this.Folder = world_data["World Folder"];
+            this.FileSize = int.TryParse(world_data["File Size"], out int i) ? i : 0;
+            this.Score = int.TryParse(world_data["Score"], out i) ? i : 0;
+            this.Completed = int.TryParse(world_data["Completed"], out i) ? i : 0;
+        }
 
         private void parseMultiCategory(KeyDataCollection world_data, string base_name, List<string> target, string[] sub)
         {

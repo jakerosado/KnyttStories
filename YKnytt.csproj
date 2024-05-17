@@ -35,6 +35,7 @@
     <Compile Include="knytt\objects\bank0\AllowHologram.cs" />
     <Compile Include="knytt\objects\bank0\GhostMusic.cs" />
     <Compile Include="knytt\objects\bank0\Halt.cs" />
+    <Compile Include="knytt\objects\bank0\HoloAutomation.cs" />
     <Compile Include="knytt\objects\bank0\JumpAutomation.cs" />
     <Compile Include="knytt\objects\bank0\LocalAmbient.cs" />
     <Compile Include="knytt\objects\bank1\SwimScreen.cs" />
@@ -245,7 +246,9 @@
     <Compile Include="knytt\objects\bank7\Rain.cs" />
     <Compile Include="knytt\objects\GDKnyttObjectFactory.cs" />
     <Compile Include="knytt\objects\GDObjectLayers.cs" />
-    <Compile Include="knytt\ui\MapPanel.cs" />
+    <Compile Include="knytt\ui\map\MapPanel.cs" />
+    <Compile Include="knytt\ui\map\MapViewports.cs" />
+    <Compile Include="knytt\ui\map\ViewportTile.cs" />
     <Compile Include="knytt\ui\PauseLayer.cs" />
     <Compile Include="knytt\ui\PausePanel.cs" />
     <Compile Include="knytt\ui\ClickPlayer.cs" />
@@ -265,6 +268,7 @@
     <Compile Include="knytt\ui\SlotButton.cs" />
     <Compile Include="knytt\ui\stats\HTTPUtil.cs" />
     <Compile Include="knytt\ui\stats\RateHTTPRequest.cs" />
+    <Compile Include="knytt\ui\stats\StarRate.cs" />
     <Compile Include="knytt\ui\stats\StatPanel.cs" />
     <Compile Include="knytt\ui\touch\TouchPanel.cs" />
     <Compile Include="knytt\ui\touch\TouchSettings.cs" />

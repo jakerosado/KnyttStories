@@ -10,13 +10,13 @@ YKnytt's current iteration has differing views among the community and developer
 
 An open source implementation of Knytt Stories in C# using Godot Engine
 
-[Download YKnytt v0.6.2 beta for Android](https://github.com/youkaicountry/yknytt/releases/download/0.6.2/YKnytt_v0.6.2.apk)
+[Download YKnytt v0.6.4 beta for Android](https://github.com/youkaicountry/yknytt/releases/download/0.6.4/YKnytt_v0.6.4.apk)
 
-[Download YKnytt v0.6.2 beta for Windows](https://github.com/youkaicountry/yknytt/releases/download/0.6.2/YKnytt_v0.6.2_win.zip)
+[Download YKnytt v0.6.4 beta for Windows](https://github.com/youkaicountry/yknytt/releases/download/0.6.4/YKnytt_v0.6.4_win.zip)
 
-[Download YKnytt v0.6.2 beta for Linux](https://github.com/youkaicountry/yknytt/releases/download/0.6.2/YKnytt_v0.6.2_linux.zip)
+[Download YKnytt v0.6.4 beta for Linux](https://github.com/youkaicountry/yknytt/releases/download/0.6.4/YKnytt_v0.6.4_linux.zip)
 
-[Web version: play YKnytt on itch.io](https://youkaicountry.itch.io/yknytt)
+[Web version: play YKnytt v0.6.1 on itch.io](https://youkaicountry.itch.io/yknytt)
 
 ### Screenshots
 
@@ -32,11 +32,11 @@ An open source implementation of Knytt Stories in C# using Godot Engine
 
 ### Reporting a broken level
 
-If you find a bug in a level, just press "complain" on a level info screen. Your latest save will be sent to the server. There is no need to report it in issues, unless it requires some explanation.
+If you find a bug in a level, just press "complain" on a level info screen. Your latest save will be sent to the server. There is no need to report it in issues, unless it requires some explanation. Results may appear [here](https://github.com/youkaicountry/yknytt/issues/200).
 
 ### Building
 
-Requires Godot 3.6.beta2.mono and .NET Framework 4.8 Developer Pack for Windows (or mono-devel for Linux)
+Requires Godot 3.6.beta4.mono and .NET Framework 4.8 Developer Pack for Windows (or mono-devel for Linux)
 
 #### Export settings
 

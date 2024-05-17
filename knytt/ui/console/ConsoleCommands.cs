@@ -58,15 +58,17 @@ public static class ConsoleCommands
         cs.AddCommand(new CommandDeclaration("reboot", "Reloads this world from the latest save", null, false, RebootCommand.NewRebootCommand));
         cs.AddCommand(new CommandDeclaration("youtube", "Searches playthrough on YouTube", null, false, YoutubeCommand.NewYoutubeCommand));
         cs.AddCommand(new CommandDeclaration("settings", "Prints settings file. settings copy: copies it to clipboard", null,
-            true, SettingsCommand.NewSettingsCommand, new CommandArg("subcmd", CommandArg.Type.StringArg, optional: true)));
+            true, SettingsCommand.NewSettingsCommand, new CommandArg("section", CommandArg.Type.StringArg, optional: true),
+            new CommandArg("name", CommandArg.Type.StringArg, optional: true), new CommandArg("value", CommandArg.Type.StringArg, optional: true)));
+        cs.AddCommand(new CommandDeclaration("hell", "Goes to the most hardest place on the map + prints death statistics", null, false, HellCommand.NewHellCommand));
         cs.AddCommand(new CommandDeclaration("exit", "Hides this console", null, false, ExitCommand.NewExitCommand));
         cs.AddCommand(new CommandDeclaration("quit", "Hides this console", null, true, ExitCommand.NewExitCommand));
         return cs;
     }
 
     public static readonly List<string> CommandHistoryExamples = new List<string>() { 
-        "exit", "list", "reboot", "mon", "mon flags", "trail", "death", "shift 0 0 2 0", "set highjump on", 
-        "speed 1", "speed 0.5", "iddqd", "idclip", "map", "save paste", "save copy", "youtube", "save" };
+        "exit", "list", "reboot", "mon", "trail", "death", "shift 0 0 2 0", "set highjump on", 
+        "speed 1", "speed 0.5", "iddqd", "idclip", "hell", "map", "mon flags", "save paste", "save copy", "youtube", "save" };
 
     public class SpeedCommand : ICommand
     {
@@ -213,6 +215,8 @@ public static class ConsoleCommands
                     {
                         return "Can't parse save file from clipboard";
                     }
+                    save.SourcePowers = new JuniValues();
+                    save.SourcePowers.readFromSave(save);
                     game.GDWorld.KWorld.CurrentSave = save;
                     game.saveGame(save);
                     game.Juni.die();
@@ -350,13 +354,13 @@ public static class ConsoleCommands
             {
                 for (int i = 0; i < value.Length && i < 13; i++) { game.Juni.setPower(i, value[i] == '1'); }
                 game.sendCheat();
-                env.Console.AddMessage("Some powers was set or unset.");
+                env.Console.AddMessage("Some powers were set or unset.");
             }
             else if (variable == "flags")
             {
                 for (int i = 0; i < value.Length && i < 10; i++) { game.Juni.Powers.setFlag(i, value[i] == '1'); }
                 game.sendCheat();
-                env.Console.AddMessage("Some flags was set or unset.");
+                env.Console.AddMessage("Some flags were set or unset.");
             }
             else
             {
@@ -402,6 +406,7 @@ public static class ConsoleCommands
                 case "flags":
                     game.UI.Location.ShowFlags = true;
                     game.UI.Location.Visible = true;
+                    game.UI.Location.Flash = false;
                     game.UI.Location.updateFlags(game.Juni.Powers.Flags);
                     break;
                 case "off":
@@ -595,8 +600,6 @@ public static class ConsoleCommands
         protected override void enable(bool on, GDKnyttGame game, ConsoleExecutionEnvironment env)
         {
             game.UI.ForceMap = on;
-            game.UI.GetNode<TouchPanel>("TouchPanel").InstallMap(on);
-            if (on) { game.UI.GetNode<InfoPanel>("InfoPanel").addItem("ItemInfo", (int)JuniValues.PowerNames.Map); }
             game.Juni.setPower(JuniValues.PowerNames.Map, on);
             env.Console.AddMessage(on ? "Map is enabled. Save the game to keep map power." : "Map is disabled.");
         }
@@ -748,11 +751,13 @@ public static class ConsoleCommands
 
     public class SettingsCommand : ICommand
     {
-        string subcmd;
+        string section, name, value;
 
         public SettingsCommand(CommandParseResult result)
         {
-            subcmd = result.Args["subcmd"];
+            section = result.Args.ContainsKey("section") ? result.Args["section"] : null;
+            name = result.Args.ContainsKey("name") ? result.Args["name"] : null;
+            value = result.Args.ContainsKey("value") ? result.Args["value"] : null;
         }
 
         public static ICommand NewSettingsCommand(CommandParseResult result)
@@ -768,7 +773,7 @@ public static class ConsoleCommands
             var ini_text = f.GetAsText();
             f.Close();
 
-            switch (subcmd)
+            switch (section)
             {
                 case null:
                     env.Console.AddMessage(ini_text);
@@ -776,12 +781,61 @@ public static class ConsoleCommands
 
                 case "copy":
                     OS.Clipboard = ini_text;
-                    env.Console.AddMessage("Settings was copied to clipboard.");
+                    env.Console.AddMessage("Settings were copied to clipboard.");
                     return null;
 
                 default:
-                    return "Can't recognize your command";
+                    if (name == null) { return "Setting name missing!"; }
+                    if (value == null) { return "Setting value missing!"; }
+                    if (!GDKnyttSettings.ini.Sections.ContainsSection(section)) { return "Wrong section name!"; }
+                    name = name.Replace('_', ' ');
+                    GDKnyttSettings.ini[section][name] = value;
+                    GDKnyttSettings.saveSettings();
+                    env.Console.AddMessage($"Now {section}[{name}] = {value}");
+                    return null;
             }
+        }
+    }
+
+    public class HellCommand : ICommand
+    {
+        public HellCommand(CommandParseResult result) {}
+
+        public static ICommand NewHellCommand(CommandParseResult result)
+        {
+            return new HellCommand(result);
+        }
+
+        public string Execute(object environment)
+        {
+            var env = (ConsoleExecutionEnvironment)environment;
+            var game = GDKnyttDataStore.Tree.Root.GetNodeOrNull<GDKnyttGame>("GKnyttGame");
+            if (game == null) { return "No game is loaded"; }
+
+            env.Console.AddMessage($"Total deaths: {game.Juni.Powers.TotalDeaths}");
+            if (game.Juni.Powers.HardestPlace == null)
+            {
+                return "But can't go to the most dangerous place (not saved yet).";
+            }
+
+            env.Console.AddMessage($"Going to the most dangerous place: {game.Juni.Powers.HardestPlace}");
+            env.Console.AddMessage($"You died here {game.Juni.Powers.HardestPlaceDeaths} times");
+
+            string place = game.Juni.Powers.HardestPlace;
+            string area = place.Left(place.IndexOf(':'));
+            string pos = place.Substring(place.IndexOf(':') + 1);
+            var area_kp = new KnyttPoint(int.Parse(area.Substring(1, area.IndexOf('y') - 1)), 
+                                         int.Parse(area.Substring(area.IndexOf('y') + 1)));
+            var pos_kp = new KnyttPoint(int.Parse(pos.Substring(1, pos.IndexOf('y') - 1)), 
+                                        int.Parse(pos.Substring(pos.IndexOf('y') + 1)));
+
+            var shift = new KnyttShift(game.CurrentArea.Area.Position, game.Juni.AreaPosition, KnyttSwitch.SwitchID.A);
+            shift.AbsoluteTarget = true;
+            shift.FormattedArea = area_kp;
+            shift.FormattedPosition = pos_kp;
+            if (!shift.RelativeArea.isZero()) { game.changeAreaDelta(shift.RelativeArea, true); }
+            game.Juni.moveToPosition(game.CurrentArea, shift.AbsolutePosition);
+            return null;
         }
     }
 }

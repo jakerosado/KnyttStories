@@ -24,6 +24,7 @@ public class GDKnyttGame : Node2D
     public GDKnyttAmbiChannel AmbianceChannel2 { get; private set; }
 
     private ShaderMaterial tint;
+    private MapViewports viewports;
 
     [Export]
     public float edgeScrollSpeed = 1500f;
@@ -59,6 +60,8 @@ public class GDKnyttGame : Node2D
 
         this.Deaths = GetNode<DeathContainer>("%DeathContainer");
 
+        this.viewports = GetNode<MapViewports>("%MapViewports");
+
         UI = GetNode<UICanvasLayer>("%UICanvasLayer");
         this.GDWorld = GetNode<GDKnyttWorld>("GKnyttWorld");
 
@@ -67,6 +70,7 @@ public class GDKnyttGame : Node2D
         GDKnyttSettings.setupViewport(for_ui: false);
         this.setupCamera();
         this.setupBorder();
+        this.setupShader();
         this.setupWorld();
     }
 
@@ -77,13 +81,13 @@ public class GDKnyttGame : Node2D
         GDWorld.loadWorld();
         createJuni();
 
-        GetNode<InfoPanel>("UICanvasLayer/InfoPanel").checkCustomPowers();
+        if (GDKnyttSettings.DetailedMap) { viewports.init(world); }
+        UI.initialize(this);
+        UI.updatePowers();
+
         this.changeArea(GDWorld.KWorld.CurrentSave.getArea(), true);
         Juni.moveToPosition(CurrentArea, GDWorld.KWorld.CurrentSave.getAreaPosition());
         saveGame(Juni, false);
-
-        UI.initialize(this);
-        UI.updatePowers();
     }
 
     // On load a save file
@@ -100,15 +104,19 @@ public class GDKnyttGame : Node2D
     public async void respawnJuniWithWSOD()
     {
         // TODO: if respawn executes during save, Juni may save position, but not area coordinates (check again, hard to reproduce)
-        UI.WSOD.startWSOD();
-        await ToSignal(UI.WSOD, "WSODFinished");
+        if (GDKnyttSettings.WSOD)
+        {
+            UI.WSOD.startWSOD();
+            await ToSignal(UI.WSOD, "WSODFinished");
+        }
         respawnJuni();
     }
 
     public void respawnJuni()
     {
         var save = GDWorld.KWorld.CurrentSave;
-        Juni.Powers.readFromSave(save);
+        Juni.Powers = new JuniValues(save.SourcePowers, Juni.Powers);
+        Juni.Powers.respawn(save.getArea(), save.getAreaPosition());
         this.changeArea(save.getArea(), force_jump: true, regenerate_same: true);
         Juni.moveToPosition(CurrentArea, save.getAreaPosition());
         Juni.reset();
@@ -140,6 +148,7 @@ public class GDKnyttGame : Node2D
         f.StoreString(save.ToString());
         f.Close();
 
+        viewports.saveAll();
         KnyttLogger.Debug($"Game saved to {fname}");
     }
 
@@ -206,9 +215,11 @@ public class GDKnyttGame : Node2D
 
     public bool hasMap()
     {
-        if (UI.ForceMap || Juni.Powers.getPower(JuniValues.PowerNames.Map)) { return true; }
         var world_section = GDWorld.KWorld.INIData["World"];
-        return world_section["Format"] == "4" && world_section["Map"]?.ToLower() != "false";
+        if (UI.ForceMap) { return true; } // map is shown anyway in case of console command or if a player finds map power
+        if (world_section["Map"]?.ToLower() == "false") { return false; }
+        if (GDKnyttSettings.ForcedMap) { return true; }
+        return world_section["Format"] == "4";
     }
 
     public override void _Process(float delta)
@@ -293,7 +304,10 @@ public class GDKnyttGame : Node2D
         Juni.stopHologram(cleanup: true);
         if (area.Area.ExtraData?.ContainsKey("Attach") ?? false) { Juni.enableAttachment(area.Area.getExtraData("Attach")); }
         checkTint(area);
-        if (hasMap() && !Juni.DebugFlyMode) { Juni.Powers.setVisited(CurrentArea.Area); }
+
+        if (Juni.DebugFlyMode) { return; }
+        Juni.Powers.setVisited(CurrentArea.Area);
+        if (hasMap()) { viewports.addArea(CurrentArea); }
     }
 
     public async void win(string ending)
@@ -425,5 +439,16 @@ public class GDKnyttGame : Node2D
         var border = GetNode<Control>("GKnyttCamera/TintNode/Border");
         border.Visible = GDKnyttSettings.Border;
         GetNode<TouchPanel>("UICanvasLayer/TouchPanel").SetupBorder();
+    }
+
+    public void setupShader()
+    {
+        GetNode<ColorRect>("GKnyttCamera/ShaderNode/Shader").Material = 
+            GDKnyttSettings.Shader <= GDKnyttSettings.ShaderType.HQ4X ? null :
+            ResourceLoader.Load<ShaderMaterial>($"res://knytt/ui/screen_shaders/{GDKnyttSettings.Shader}.tres");
+
+        var mat = ResourceLoader.Load<ShaderMaterial>("res://knytt/ui/screen_shaders/TileShader.tres");
+        mat.Shader = GDKnyttSettings.Shader == GDKnyttSettings.ShaderType.HQ4X ?
+            ResourceLoader.Load<Shader>("res://knytt/ui/screen_shaders/HQ4X.gdshader") : null;
     }
 }

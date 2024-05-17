@@ -11,36 +11,46 @@ public class UICanvasLayer : CanvasLayer
     public LocationLabel Location { get; private set; }
     private ArtifactsPanel artifactsPanel;
     private MapPanel mapPanel;
+    private InfoPanel infoPanel;
 
     private bool _force_map;
     public bool ForceMap
     {
         get { return _force_map; } 
-        set
+        set { _force_map = value; forceMap(value, add_icon: true); }
+    }
+
+    public void forceMap(bool force, bool add_icon = false)
+    {
+        if (force)
         {
-            _force_map = value;
-            if (value)
-            {
-                mapPanel.init(Game.GDWorld.KWorld, Game.Juni);
-                Game.Juni.Powers.setVisited(Game.CurrentArea.Area);
-            }
-            else
-            {
-                mapPanel.init(null, null);
-            }
+            mapPanel.init(Game.GDWorld.KWorld, Game.Juni);
+            if (Game.hasMap()) { GetNode<MapViewports>("%MapViewports").addArea(Game.CurrentArea); }
+            if (add_icon) { infoPanel.addItem("ItemInfo", (int)PowerNames.Map); }
         }
+        else
+        {
+            mapPanel.init(null, null);
+        }
+        Game.UI.GetNode<TouchPanel>("TouchPanel").InstallMap(force);
     }
 
     public void initialize(GDKnyttGame game)
     {
         Game = game;
 
+        infoPanel = Game.GetNode<InfoPanel>("%InfoPanel");
+        infoPanel.checkCustomPowers();
+
         mapPanel = GetNode<MapPanel>("MapBackgroundPanel/MapPanel");
         if (game.hasMap())
         {
             mapPanel.init(game.GDWorld.KWorld, game.Juni);
             GetNode<TouchPanel>("TouchPanel").InstallMap();
-            GetNode<InfoPanel>("InfoPanel").addItem("ItemInfo", (int)PowerNames.Map);
+            if (Game.GDWorld.KWorld.INIData["World"]["Format"] == "4" || Game.Juni.Powers.getPower(PowerNames.Map))
+            {
+                infoPanel.addItem("ItemInfo", (int)PowerNames.Map);
+            }
         }
         else
         {
@@ -74,7 +84,7 @@ public class UICanvasLayer : CanvasLayer
 
     private void togglePanel()
     {
-        var anim = GetNode<AnimationPlayer>("AnimationPlayer");
+        var anim = infoPanel.GetNode<AnimationPlayer>("AnimationPlayer");
         var anim2 = artifactsPanel?.GetNode<AnimationPlayer>("AnimationPlayer");
 
         if (!anim.IsPlaying())
@@ -110,7 +120,7 @@ public class UICanvasLayer : CanvasLayer
 
     public void updatePowers()
     {
-        GetNode<InfoPanel>("InfoPanel").updateItems(Game.Juni);
+        infoPanel.updateItems(Game.Juni);
 
         if (artifactsPanel == null && (
                 Game.Juni.Powers.getCreaturesCount() > 0 || 
@@ -119,9 +129,11 @@ public class UICanvasLayer : CanvasLayer
         {
             artifactsPanel = ResourceLoader.Load<PackedScene>("res://knytt/ui/info_panel/ArtifactsPanel.tscn").Instance<ArtifactsPanel>();
             artifactsPanel.Modulate = new Color(1, 1, 1, 0);
-            AddChild(artifactsPanel);
+            Game.GetNode<Node2D>("%TintNode").AddChild(artifactsPanel);
         }
 
         artifactsPanel?.updateItems(Game.Juni);
+
+        if (Game.Juni.Powers.getPower(PowerNames.Map) && !Game.hasMap()) { ForceMap = true; } // if Map=false but map power was given
     }
 }
